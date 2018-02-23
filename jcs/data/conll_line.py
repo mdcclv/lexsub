@@ -1,8 +1,7 @@
 import re
 
-class ConllLine():
- 
 
+class ConllLine():
 
     def root_init(self):
         self.id = 0
@@ -13,14 +12,14 @@ class ConllLine():
         self.feats = '_'
         self.head = -1
         self.deptype = 'rroot'
-        self.phead = -1 
+        self.phead = -1
         self.pdeptype = '_'
 
-    def __str__( self ):
+    def __str__(self):
         return '\t'.join([str(self.id), self.form, self.lemma, self.cpostag, self.postag, self.feats, str(self.head), self.deptype, str(self.phead), self.pdeptype])
-    
+
     def __init__(self, tokens=None):
-        if tokens == None:
+        if tokens is None:
             self.root_init()
         else:
             self.id = int(tokens[0])
@@ -32,14 +31,15 @@ class ConllLine():
             self.head = int(tokens[6])
             self.deptype = tokens[7]
             if len(tokens) > 8:
-                self.phead = -1 if tokens[8] == '_' else int(tokens[8]) 
+                self.phead = -1 if tokens[8] == '_' else int(tokens[8])
                 self.pdeptype = tokens[9]
             else:
-                self.phead = -1 
+                self.phead = -1
                 self.pdeptype = '_'
-        
-    tree_line_extractor = re.compile('([a-z]+)\(.+-(\d+), (.+)-(\d+)\)') 
-    # stanford parser tree output:  num(Years-3, Five-1) 
+
+    tree_line_extractor = re.compile('([a-z]+)\(.+-(\d+), (.+)-(\d+)\)')
+    # stanford parser tree output:  num(Years-3, Five-1)
+
     def from_tree_line(self, tree_line):
         self.root_init()
         tok = self.tree_line_extractor.match(tree_line)
@@ -47,6 +47,3 @@ class ConllLine():
         self.form = tok.group(3)
         self.head = int(tok.group(2))
         self.deptype = tok.group(1)
-        
-
-        

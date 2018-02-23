@@ -5,7 +5,7 @@ Example of coinco format:
 <document>
   <sent MASCfile="NYTnewswire9.txt" MASCsentID="s-r0" >
     <precontext>
-    
+
     </precontext>
     <targetsentence>
     A mission to end a war
@@ -48,55 +48,62 @@ def is_printable(s):
 
 
 def clean_token(token):
-    
+
     token = token.replace('&quot;', '"')
     token = token.replace('&apos;', "'")
-    token = token.replace(chr(int("85",16)), "...")
-    token = token.replace(chr(int("91",16)), "'")
-    token = token.replace(chr(int("92",16)), "'")
-    token = token.replace(chr(int("93",16)), '"')
-    token = token.replace(chr(int("94",16)), '"')
-    token = token.replace(chr(int("96",16)), '-') 
-        
+    token = token.replace(chr(int("85", 16)), "...")
+    token = token.replace(chr(int("91", 16)), "'")
+    token = token.replace(chr(int("92", 16)), "'")
+    token = token.replace(chr(int("93", 16)), '"')
+    token = token.replace(chr(int("94", 16)), '"')
+    token = token.replace(chr(int("96", 16)), '-')
+
     if not is_printable(token):
-        sys.stderr.write('TOKEN NOT PRINTABLE: '+''.join([str(c) for c in token if c in string.printable ]) + '\n')
+        sys.stderr.write('TOKEN NOT PRINTABLE: ' +
+                         ''.join([str(c) for c in token if c in string.printable]) + '\n')
         return "<UNK>"
     else:
         return token
 
+
 def subs2text(subs_element):
-    subs = [(int(sub.attrib.get('freq')), sub.attrib.get('lemma').replace(';', ',')) for sub in subs_element.iter('subst')]  # sub.attrib.get('lemma').replace(';', ',') is used to fix a three cases in coinco where the lemma includes erroneously the char ';'. Since this char is used as a delimiter, we replace it with ','. 
+    # sub.attrib.get('lemma').replace(';', ',') is used to fix a three cases in coinco where the lemma includes erroneously the char ';'. Since this char is used as a delimiter, we replace it with ','.
+    subs = [(int(sub.attrib.get('freq')), sub.attrib.get(
+        'lemma').replace(';', ',')) for sub in subs_element.iter('subst')]
     sorted_subs = sorted(subs, reverse=True)
     return ';'.join([sub + " " + str(freq) for freq, sub in sorted_subs])+';'
 
+
 if __name__ == '__main__':
-    
-    if len(sys.argv)<3:
-        print "Usage: %s <coinco-filename> <output-vocab-filename> <output-test-filename> <output-gold-filename>" % sys.argv[0]
+
+    if len(sys.argv) < 3:
+        print("Usage: %s <coinco-filename> <output-vocab-filename> <output-test-filename> <output-gold-filename>" % sys.argv[0])
         sys.exit(1)
-        
+
     with open(sys.argv[1], 'r') as f:
         coinco = ElementTree.parse(f)
-    
-    vocab_file = open(sys.argv[2], 'w') # targets vocabulary helper file (not part of the LST 2007 format)   
-    test_file = open(sys.argv[3], 'w') # LST 2007 test format
-    gold_file = open(sys.argv[4], 'w') # LST 2007 gold format
-     
+
+    # targets vocabulary helper file (not part of the LST 2007 format)
+    vocab_file = open(sys.argv[2], 'w')
+    test_file = open(sys.argv[3], 'w')  # LST 2007 test format
+    gold_file = open(sys.argv[4], 'w')  # LST 2007 gold format
+
     pos_types = set()
-    target_types = {}   
+    target_types = {}
     wordforms = {}
     sent_num = 0
     tokens_num = 0
-        
+
     for sent in coinco.iter('sent'):
         sent_num += 1
         tokens = sent.find('tokens')
         sent_text = ""
         for token in tokens.iter('token'):
-            sent_text = sent_text + clean_token(token.attrib.get('wordform')).lower() + " "                
+            sent_text = sent_text + \
+                clean_token(token.attrib.get('wordform')).lower() + " "
             if token.attrib.get('id') != 'XXX':
                 wordform = token.attrib.get('wordform').lower()
-                if not '-' in wordform:
+                if '-' not in wordform:
                     if wordform in wordforms:
                         wordforms[wordform] = wordforms[wordform]+1
                     else:
@@ -105,28 +112,35 @@ if __name__ == '__main__':
         tok_position = -1
         for token in tokens.iter('token'):
             tok_position += 1
-            if token.attrib.get('id') != 'XXX' and token.attrib.get('problematic') == 'no':# and (len(token.attrib.get('lemma').strip().split()) == 1):
+            # and (len(token.attrib.get('lemma').strip().split()) == 1):
+            if token.attrib.get('id') != 'XXX' and token.attrib.get('problematic') == 'no':
                 tokens_num += 1
                 try:
-                    target_key = clean_token(token.attrib.get('lemma')) + '.' + token.attrib.get('posMASC')[0]
-                    test_file.write("%s\t%s\t%d\t%s\n" % (target_key, token.attrib.get('id'), tok_position, sent_text))
-                    gold_file.write("%s %s :: %s\n" % (target_key, token.attrib.get('id'), subs2text(token.find('substitutions'))))
-                    
+                    target_key = clean_token(token.attrib.get(
+                        'lemma')) + '.' + token.attrib.get('posMASC')[0]
+                    test_file.write("%s\t%s\t%d\t%s\n" % (
+                        target_key, token.attrib.get('id'), tok_position, sent_text))
+                    gold_file.write("%s %s :: %s\n" % (target_key, token.attrib.get(
+                        'id'), subs2text(token.find('substitutions'))))
+
 #                    pos_types.add(token.attrib.get('posMASC'))
 #                    if token.attrib.get('posMASC').startswith('V') and token.attrib.get('problematic') == 'no':
 #                        if target_key in target_types:
 #                            target_types[target_key] += 1
 #                        else:
 #                            target_types[target_key] = 1
-                    
+
                 except UnicodeEncodeError as e:
-                    test_file.write("ENCODING TARGET ERROR at token_id %s\n" % (token.attrib.get('id')))
-                    gold_file.write("ENCODING TARGET ERROR at token_id %s\n" % (token.attrib.get('id')))
-                    sys.stderr.write("ENCODING TARGET ERROR at token_id %s\n" % (token.attrib.get('id')))
-                
-                
-    sorted_wordforms = sorted(wordforms.iteritems(), key=itemgetter(1), reverse=True)
-    
+                    test_file.write("ENCODING TARGET ERROR at token_id %s\n" % (
+                        token.attrib.get('id')))
+                    gold_file.write("ENCODING TARGET ERROR at token_id %s\n" % (
+                        token.attrib.get('id')))
+                    sys.stderr.write("ENCODING TARGET ERROR at token_id %s\n" % (
+                        token.attrib.get('id')))
+
+    sorted_wordforms = sorted(iter(wordforms.items()),
+                              key=itemgetter(1), reverse=True)
+
     for wordform, freq in sorted_wordforms:
         try:
             vocab_file.write('%s.*\t%d\n' % (wordform, freq))
@@ -136,10 +150,6 @@ if __name__ == '__main__':
     vocab_file.close()
     test_file.close()
     gold_file.close()
-                           
-    print 'read %d sentences %d target tokens' % (sent_num, tokens_num)   
-#    print 'target types with >= 10 instances: %d' % len([t for (t, freq) in target_types.iteritems() if freq>=10])    
-    
-    
-        
-    
+
+    print('read %d sentences %d target tokens' % (sent_num, tokens_num))
+#    print 'target types with >= 10 instances: %d' % len([t for (t, freq) in target_types.iteritems() if freq>=10])
